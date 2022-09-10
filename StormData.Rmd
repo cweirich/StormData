@@ -1,0 +1,121 @@
+---
+title: "Data Analysis of Storms Across the USA"
+author: "Christiano Weirich"
+date: '2022-09-09'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+***
+The [National Oceanic and Atmospheric Administration](https://www.noaa.gov/) is
+an U.S. government agency that works with data related to various weather 
+and other natural phenomena with the objective of making forecasts and other
+analysis. The purpose of this report is to use their [Storm Database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)
+to answer two questions:
+
+1. Which types of events are most harmful with respect to population health?
+
+2. Which types of events have the greatest economic consequences?
+
+## Data Processing
+***
+The *dplyr* library was used to process the data
+```{r message=F}
+library(dplyr)
+```
+
+And the environment in the moment of the analysis was
+```{r}
+sessionInfo()
+```
+
+The data was downloaded as of this document creation date from the URL mentioned 
+in the Synopsis above and was read into memory
+```{r cache=T}
+rawData <- read.csv("repdata_data_StormData.csv.bz2")
+```
+
+## Results
+***
+### Which types of events are most harmful with respect to population health?
+***
+To address the first question, the raw data was grouped by **EVENT TYPE** and 
+summarized to show the sum of **FATALITIES** and **INJURIES** ranked in 
+descendant order
+```{r}
+healthData <- rawData %>% 
+                group_by(EVTYPE) %>% 
+                summarise(
+                    FATALITIES = sum(FATALITIES),
+                    INJURIES = sum(INJURIES)) %>% 
+                mutate(TOTAL = FATALITIES + INJURIES) %>%
+                arrange(desc(TOTAL))
+healthData
+```
+So these are the most harmful events regarding population health.
+
+```{r fig.width=10}
+top5MostHarmful <- healthData[1:5,]
+barplot(top5MostHarmful$TOTAL, 
+        names.arg = top5MostHarmful$EVTYPE, 
+        main="Top 5 Most Harmful Events", 
+        ylab="Number of Casualties", 
+        col="red")
+```
+As the plot illustrates, Tornadoes are the most harmful events to public health
+by a great margin.
+
+***
+### Which types of events have the greatest economic consequences?
+***
+To subset the data for the second answer, we will again group the data by **EVENT TYPE**
+but now use the **PROPERTY DAMAGE** and **CROP DAMAGE** values to be able to
+rank the biggest losses in economic terms.
+As property and crop values are divided in two columns each, one with the amount
+of money and the other with the exponent of magnitude of the amount, a new
+column is created with the amount in absolute values.
+
+```{r}
+rawData$PROPDMGEXP<-recode(rawData$PROPDMGEXP,
+                           'K'=1000,
+                           'M'=1000000,
+                           'B'=1000000000,
+                           .default=1)
+rawData$CROPDMGEXP<-recode(rawData$CROPDMGEXP,
+                           'K'=1000,
+                           'M'=1000000,
+                           'B'=1000000000,
+                           .default=1)
+rawData$ABSPROPDMG <- rawData$PROPDMG*rawData$PROPDMGEXP
+rawData$ABSCROPDMG <- rawData$CROPDMG*rawData$CROPDMGEXP
+economicData <- rawData %>% 
+                group_by(EVTYPE) %>% 
+                summarise(
+                    ABSPROPDMG = sum(ABSPROPDMG),
+                    ABSCROPDMG = sum(ABSCROPDMG)) %>% 
+                mutate(TOTAL = ABSPROPDMG + ABSCROPDMG) %>%
+                arrange(desc(TOTAL))
+economicData
+```
+Giving us the events causing the most economic losses.
+
+```{r fig.width=10}
+top5BiggestLosses <- economicData[1:5,]
+barplot(top5BiggestLosses$TOTAL, 
+        names.arg = top5BiggestLosses$EVTYPE, 
+        main="Top 5 Events Causing Economic Losses", 
+        ylab="Losses (in USD)", 
+        col="purple")
+```
+The plot shows that Floods are the most disastrous events in regard of the 
+economy.  
+
+## Conclusion
+***
+As demonstrated by this analysis, **Tornadoes** are the events that cause more
+casualties and raises more concerns in the public health area and **Floods** are
+the events that cause the biggest economic losses.

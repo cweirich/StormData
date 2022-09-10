@@ -4,3 +4,7 @@
 .Ruserdata
 *.bz2
 *.csv
+StormData.html
+StormData_cache
+StormData_files
+rsconnect
